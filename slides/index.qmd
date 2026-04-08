@@ -51,8 +51,8 @@ data = left_join(data, rename(carriers, TicketingCarrierName="Description"), by=
 
 - Hands-on exercise converting a set of R scripts a modular and tested format
 - Two scripts that analyze data on airline tickets from the Bureau of Transportation Statistics
-- Script download: [https://github.com/mattwigway/odum-modular-design-r](https://github.com/mattwigway/odum-modular-design-r)
-- These slides: [https://projects.indicatrix.org/odum-modular-design-r](https://projects.indicatrix.org/odum-modular-design-r)
+- Script repository (clone this now): [https://github.com/mattwigway/OdumModularDesignR](https://github.com/mattwigway/OdumModularDesignR)
+- These slides: [https://projects.indicatrix.org/OdumModularDesignR](https://projects.indicatrix.org/OdumModularDesignR)
 
 ## The two scripts
 
@@ -166,20 +166,25 @@ arrange(pairs, -Passengers)
 ```{r}
 #| output: false
 busiest_routes = function () {
-    pairs = group_by(data, Origin, Dest) |> summarize(Passengers=sum(Passengers),
-        distance_km=first(Distance) * 1.609)
-    arrange(pairs, -Passengers)
-
-    pairs = mutate(pairs,
-        airport1 = if_else(Origin < Dest, Origin, Dest),
-        airport2 = if_else(Origin < Dest, Dest, Origin)
-        )
-    pairs = group_by(pairs, airport1, airport2) |> summarize(
-        Passengers=sum(Passengers),
-        distance_km=first(distance_km)
-    )
-    
-    return(arrange(pairs, -Passengers))
+  # Now, we can see what the most popular air route is, by summing up the number of
+  # passengers carried.
+  pairs = data |>
+    group_by(Origin, Dest) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(Distance) * 1.609) |>
+    ungroup()
+  
+  # we see that LAX-JFK (Los Angeles to New York Kennedy) is represented separately
+  # from JFK-LAX. We'd like to combine these two. Create airport1 and airport2 fields
+  # with the first and second airport in alphabetical order.
+  pairs = pairs |>
+    mutate(
+      airport1 = if_else(Origin < Dest, Origin, Dest),
+      airport2 = if_else(Origin < Dest, Dest, Origin)
+    ) |>
+    group_by(airport1, airport2) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(distance_km))
+  
+  arrange(pairs, -Passengers)
 }
 ```
 
@@ -202,20 +207,25 @@ busiest_routes()
 ```{r}
 #| output: false
 busiest_routes = function (dataframe, origcol, destcol) {
-    pairs = group_by(dataframe, origcol, destcol) |> summarize(Passengers=sum(Passengers),
-        distance_km=first(Distance) * 1.609)
-    arrange(pairs, -Passengers)
-
-    pairs = mutate(pairs,
-        airport1 = if_else(origcol < destcol, origcol, destcol),
-        airport2 = if_else(origcol < destcol, destcol, origcol)
-        )
-    pairs = group_by(pairs, airport1, airport2) |> summarize(
-        Passengers=sum(Passengers),
-        distance_km=first(distance_km)
-    )
-    
-    return(arrange(pairs, -Passengers))
+  # Now, we can see what the most popular air route is, by summing up the number of
+  # passengers carried.
+  pairs = dataframe |>
+    group_by(origcol, destcol) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(Distance) * 1.609) |>
+    ungroup()
+  
+  # we see that LAX-JFK (Los Angeles to New York Kennedy) is represented separately
+  # from JFK-LAX. We'd like to combine these two. Create airport1 and airport2 fields
+  # with the first and second airport in alphabetical order.
+  pairs = pairs |>
+    mutate(
+      airport1 = if_else(origcol < destcol, origcol, destcol),
+      airport2 = if_else(origcol < destcol, destcol, origcol)
+    ) |>
+    group_by(airport1, airport2) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(distance_km))
+  
+  arrange(pairs, -Passengers)
 }
 ```
 
@@ -231,7 +241,7 @@ busiest_routes(data, Origin, Dest)
 - R tried to group by the columns `origcol` and `destcol`
 - These columns don't exist
 - We need to tell R that `origcol` and `destcol` aren't actually column names, but variables that contain column names
-- Any place we refer to a variable containing a column name inside a function, use the "embracing operator" `{{ variable }}` to tell R to use the value contained by `variable` as the column name
+- Any place we refer to a variable containing a column name inside a function, use the "embracing operator" `{{{ variable }}}` to tell R to use the value contained by `variable` as the column name
     - This is only true when the variable name would not usually be in quotes (`" or '`)
 
 ## Adding arguments
@@ -239,20 +249,26 @@ busiest_routes(data, Origin, Dest)
 ```{r}
 #| output: false
 busiest_routes = function (dataframe, origcol, destcol) {
-    pairs = group_by(dataframe, {{ origcol }}, {{ destcol }}) |> summarize(Passengers=sum(Passengers),
-        distance_km=first(Distance) * 1.609)
-    arrange(pairs, -Passengers)
-
-    pairs = mutate(pairs,
-        airport1 = if_else({{ origcol }} < {{ destcol }}, {{ origcol }}, {{ destcol }}),
-        airport2 = if_else({{ origcol }} < {{ destcol }}, {{ destcol }}, {{ origcol }})
-        )
-    pairs = group_by(pairs, airport1, airport2) |> summarize(
-        Passengers=sum(Passengers),
-        distance_km=first(distance_km)
-    )
-    
-    return(arrange(pairs, -Passengers))
+  # Now, we can see what the most popular air route is, by summing up the number of
+  # passengers carried.
+  pairs = dataframe |>
+    group_by({{ origcol }}, {{ destcol }}) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(Distance) * 1.609) |>
+    ungroup()
+  
+  # we see that LAX-JFK (Los Angeles to New York Kennedy) is represented separately
+  # from JFK-LAX. We'd like to combine these two. Create airport1 and airport2 fields
+  # with the first and second airport in alphabetical order.
+  pairs = pairs |>
+    mutate(
+      airport1 = if_else({{ origcol }} < {{ destcol }}, {{ origcol }}, {{ destcol }}),
+      airport2 = if_else({{ origcol }} < {{ destcol }}, {{ destcol }}, {{ origcol }})
+    ) |>
+    group_by(airport1, airport2) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(distance_km)) |>
+    ungroup()
+  
+  arrange(pairs, -Passengers)
 }
 ```
 
@@ -268,32 +284,6 @@ busiest_routes(data, Origin, Dest)
 busiest_routes(data, OriginCity, DestCity)
 ```
 
-## Putting it all together
-
-```{r}
-#| output: false
-
-busiest_routes = function (dataframe, origcol, destcol) {
-    pairs = group_by(dataframe, {{ origcol }}, {{ destcol }}) |> summarize(Passengers=sum(Passengers),
-        distance_km=first(Distance) * 1.609)
-    arrange(pairs, -Passengers)
-
-    pairs = mutate(pairs,
-        airport1 = if_else({{ origcol }} < {{ destcol }}, {{ origcol }}, {{ destcol }}),
-        airport2 = if_else({{ origcol }} < {{ destcol }}, {{ destcol }}, {{ origcol }})
-        )
-    pairs = group_by(pairs, airport1, airport2) |> summarize(
-        Passengers=sum(Passengers),
-        distance_km=first(distance_km)
-    )
-    
-    return(arrange(pairs, -Passengers))
-}
-
-busiest_routes(data, Origin, Dest)
-busiest_routes(data, OriginCity, DestCity)
-```
-
 ## Exercise: do the same in `airline_analysis.R`
 
 - Write a function to compute market shares
@@ -303,15 +293,16 @@ busiest_routes(data, OriginCity, DestCity)
 ## Result
 
 ```{r}
-market_shares = function (dataframe, carrier, city) {
-  mkt_shares = group_by(dataframe, {{ carrier }}, {{ city }}) |>
-    summarize(Passengers=sum(Passengers)) |>
-    group_by({{ city }}) |>
-    mutate(market_share=Passengers/sum(Passengers), total_passengers=sum(Passengers)) |>
+# Now, we can compute the market shares
+market_shares = function (dataframe, carrier, market) {
+  mkt_shares = dataframe |>
+    group_by({{ carrier }}, {{ market }}) |>
+    summarize(Passengers = sum(Passengers)) |>
+    group_by({{ market }}) |>
+    mutate(market_share = Passengers / sum(Passengers), total_passengers = sum(Passengers)) |>
     ungroup()
-
-  res = filter(mkt_shares, total_passengers > 1000) |> arrange(-market_share)
-  return(res)
+  
+  filter(mkt_shares, total_passengers > 1000) |> arrange(-market_share)
 }
 
 ```
@@ -341,13 +332,13 @@ market_shares(data, TicketingCarrierName, Origin)
 - It's a bad practice to have literal values like these in your code
     - In a large project, value will end up spread over many files
     - Difficult to change (maybe you want to increase accuracy later by changing it to `1.609344`)
+    - We can define a _constant variable_ in our file that contains the value `1.609`, and refer to it when needed
+    - By convention, constants are all uppercase, and usually appear near the start of the file
+    - R does not enforce variables being constant, you could change them in other code, but you shouldn't
     - Numbers used in many places can be prone to typos
-
-## Symbolic constants
-
-- We can define a _constant variable_ in our file that contains the value `1.609`, and refer to it when needed
-- By convention, constants are all uppercase, and usually appear near the start of the file
-- R does not enforce variables being constant, you could change them in other code, but you shouldn't
+    - R code will run fine and give the wrong answer if you accidentally entered `1.906`
+    - But it will error if you entered `KIOLMETERS_TO_MILES`
+    - Only one place where you have 
 
 ## Symbolic constants
 
@@ -376,19 +367,30 @@ stopifnot(all(!is.na(dataframe$Passengers)))
 
 ```{r}
 #| include: false
-## redefine to add stopifnot
 busiest_routes = function (dataframe, origcol, destcol) {
   stopifnot(all(dataframe$Passengers >= 1))
   stopifnot(all(!is.na(dataframe$Passengers)))
-  pairs = group_by(dataframe, {{ origcol }}, {{ destcol }}) |> summarize(Passengers=sum(Passengers), distance_km=first(Distance) * KILOMETERS_PER_MILE)
+  
+  # Now, we can see what the most popular air route is, by summing up the number of
+  # passengers carried.
+  pairs = dataframe |>
+    group_by({{ origcol }}, {{ destcol }}) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(Distance) * KILOMETERS_TO_MILES)
   arrange(pairs, -Passengers)
   
   # we see that LAX-JFK (Los Angeles to New York Kennedy) is represented separately
   # from JFK-LAX. We'd like to combine these two. Create airport1 and airport2 fields
   # with the first and second airport in alphabetical order.
-  pairs = mutate(pairs, airport1 = if_else({{ origcol }} < {{ destcol }}, {{ origcol }}, {{ destcol }}), airport2 = if_else({{ origcol }} < {{ destcol }}, {{ destcol }}, {{ origcol }}))
-  pairs = group_by(pairs, airport1, airport2) |> summarize(Passengers=sum(Passengers), distance_km=first(distance_km))
-  return(arrange(pairs, -Passengers))
+  pairs = pairs |>
+    mutate(
+      airport1 = if_else({{ origcol }} < {{ destcol }}, {{ origcol }}, {{ destcol }}),
+      airport2 = if_else({{ origcol }} < {{ destcol }}, {{ destcol }}, {{ origcol }})
+    ) |>
+    group_by(airport1, airport2) |>
+    summarize(Passengers = sum(Passengers), distance_km = first(distance_km)) |>
+    ungroup()
+  
+  arrange(pairs, -Passengers)
 }
 ```
 
@@ -422,7 +424,7 @@ busiest_routes(mutate(data, Passengers=-1), Origin, Dest)
 ## Avoiding absolute file paths: data in same directory
 
 - If you data is in the same directory as your code (or a subdirectory), the `here` package is your friend
-- `here::here("data/inputs.csv")` will find the "inputs.csv" file in the data subdirectory of your project, regardless of where the R script is saved
+- `here::here("data", "inputs.csv")` will find the "inputs.csv" file in the data subdirectory of your project, regardless of where the R script is saved
 
 ## Avoiding absolute paths: data in different directory
 
@@ -431,7 +433,7 @@ busiest_routes(mutate(data, Passengers=-1), Origin, Dest)
 - Add to the file
 
 ```
-DATA_PATH="path/to/odum-modular-design-r/data"
+DATA_PATH="path/to/OdumModularDesignR/data"
 ```
 
 ## Accessing the directory
@@ -461,7 +463,6 @@ DATA_PATH="path/to/odum-modular-design-r/data"
 - Often we may want to use functions in multiple files
 - The best way to do this is to create a _package_
 - You've used lots of packages in R - anytime you use `library()` you're loading a package
-
 
 ## Creating R packages
 
@@ -516,21 +517,11 @@ An R source package is just a directory with a specific structure
 
 ## Creating your R package
 
-- Load `devtools` and use `create_package(...)` to create the directory structure for your package
-- You should put the package in a directory that is separate from your main project directory
-- `create_package(...)` will create the directory if it doesn't already exist
-- Call your package `airlinestats`
-- A new RStudio window will open with your package
-
-## Creating your R package
-
-```{r}
-#| eval: false
-library(devtools)
-create_package("~/git/airlinestats")
-```
-
-- A new RStudio window will open with the code for your new package
+- Use `usethis::create_package(...)` to create the directory structure for your package
+- `usethis::create_package(...)` will create the directory if it doesn't already exist
+- Since we're likely only going to use this package in this project, we can create the package in the same directory
+    - if we were sharing it across many projects, we'd make the package itself a separate directory/project
+- `usethis::create_package(".")` to create a package in the current directory
 
 ## Adding R code to your package
 
@@ -557,19 +548,9 @@ create_package("~/git/airlinestats")
 - Create a function that takes arguments for the file names of the dataset and the two tables that are joined to it,
 - performs the data cleaning/processing,
 - and returns the final dataset
+    - If the final dataset is not the result of the last line of your function, add `return(data)` at the end to return `data` (or whatever your dataset is called)
 - Save this function to a new file in the same directory as the others
 
-## Using your data cleaning function
-
-- Delete the data loading code in each of the analysis files
-- Use the 🧹 button in RStudio to clear the data from memory
-- Add and run a line `source("filename.R")` to load your new R file
-- Call your new function like this
-
-```{r}
-#| eval: false
-data = load_data("data/air_sample.csv", "data/L_CITY_MARKET_ID.csv", "data/L_CARRIERS.csv")
-```
 
 ## The finished function
 
@@ -577,79 +558,50 @@ Yours might not look exactly the same, and that's okay
 
 ```{r}
 #| output: false
-load_data = function(data_file, city_file, carrier_file) {
-    data = read_csv(data_file)
-
-    market_ids = read_csv(city_file)
-    data = left_join(data, rename(market_ids, OriginCity="Description"),
-        by=c(OriginCityMarketID="Code"))
-    data = left_join(data, rename(market_ids, DestCity="Description"),
-        by=c(DestCityMarketID="Code"))
-
-    carriers = read_csv(carrier_file)
-    data = left_join(data, rename(carriers, OperatingCarrierName="Description"),
-        by=c(OpCarrier="Code"))
-    data = left_join(data, rename(carriers, TicketingCarrierName="Description"),
-        by=c(TkCarrier="Code"))
-
-    return(data)
+load_air_data = function (filename, cities, carriers) {
+  # first, we need to load the data
+  data = read_csv(filename)
+  
+  # The data have seven columns: origin and destination airport, origin and destination cities
+  # carrier, and distance. The city and carrier are coded, so we will merge in other
+  # (the airports have codes as well, but these are fairly well known - e.g. RDU is
+  # Raleigh-Durham and LAX is Los Angeles; we won't match those with the official airport
+  # names)
+  
+  market_ids = read_csv(cities)
+  data = left_join(data, rename(market_ids, OriginCity = "Description"), by = c(OriginCityMarketID = "Code"))
+  data = left_join(data, rename(market_ids, DestCity = "Description"), by = c(DestCityMarketID = "Code"))
+  
+  carriers = read_csv(carriers)
+  data = left_join(data, rename(carriers, OperatingCarrierName = "Description"), by = c(OpCarrier = "Code"))
+  data = left_join(data, rename(carriers, TicketingCarrierName = "Description"), by = c(TkCarrier = "Code"))
+  
+  return(data)
 }
 ```
 
-```{r}
-#| include: false
-## run this just to make sure function above works
-rm(data)
+## Using your data cleaning function
 
-data = load_data("../data/air_sample.csv", "../data/L_CITY_MARKET_ID.csv", "../data/L_CARRIERS.csv")
-```
-
-## Adding R code to your `airlinestats` package
-
-- Create three `.R` files, `load.R`, `analysis.R`, and `constants.R`
-- Put your `load_data` function in `load.R`
-- Put the functions to calculate market shares and route popularity in `analysis.R`
-- Put the symbolic constant `KILOMETERS_PER_MILE` in `constants.R`
-    - Good practice to put your constants in one file so they don't get defined in multiple places accidentally
-- _Don't_ include `library(tidyverse)` anywhere or `source("load.R")`
-- Save the files in the `R` directory of your package 
-
-## Loading your package
-
-- During development, you can load your package with `devtools::load_all()`
-- This will reload the latest version of all of your R code
-
-```{r}
-#| eval: false
-devtools::load_all()
-```
-
-## Using your package
-
-- Functions from your package are now available
-- Try running the `load_data` function
+- Delete the data loading code in each of the analysis files
+- Use the 🧹 button in RStudio to clear the data from memory
+- Add and run a line `devtools::load_all()` to load your new package
+- Call your new function like this:
 
 ```{r}
 #| eval: false
 DATA_PATH = Sys.getenv("DATA_PATH")
-data = load_data(
-    file.path("air_sample.csv"),
-    file.path("L_CITY_MARKET_ID.csv"),
-    file.path("L_CARRIERS.csv")
-)
+data = load_air_data(file.path(DATA_PATH, "air_sample.csv"), file.path(DATA_PATH, "L_CITY_MARKET_ID.csv"), file.path(DATA_PATH, "L_CARRIERS.csv"))
 ```
 
-. . . 
+## Oops, error
 
-<pre>Error in read_csv(data_file) : could not find function "read_csv"</pre>
-
-## Referring to functions from other libraries
-
+- You probably got this: `Error in read_csv(filename) : could not find function "read_csv"`
 - Normally, `read_csv` and other functions become available when you run `library(tidyverse)`
 - But we don't do this in libraries
 - There are two main ways to refer to functions from other libraries
     - Fully-qualified notation: `readr::read_csv`
     - `@importFrom` comments
+
 
 ## Fully-qualified notation
 
@@ -659,15 +611,26 @@ data = load_data(
 
 ## Fully qualified notation
 
-- We tell R that we want to use functions from the libraries `readr` and `dplyr` by running `use_package()`
+- We tell R that we want to use functions from the libraries `readr` and `dplyr` by running `usethis::use_package()`
 - This ensures that these packages are listed as _dependencies_, so when we tell R to install the package it ensures these are installed as well.
-- Do this, and run `load_all` again, and confirm that `load_data` now works
+- Do this, and run `devtools::load_all` again, and confirm that `load_air_data` now works
 
 ```{r}
 #| eval: false
-use_package("readr")
-use_package("dplyr")
+usethis::use_package("readr")
+usethis::use_package("dplyr")
 ```
+
+## Confirm it worked
+
+- Re-run `load_all`
+- Run the data loading
+
+```{r}
+#| eval: false
+data = load_air_data(file.path(DATA_PATH, "air_sample.csv"), file.path(DATA_PATH, "L_CITY_MARKET_ID.csv"), file.path(DATA_PATH, "L_CARRIERS.csv"))
+```
+
 
 ## Using `tidyverse` functionality
 
@@ -679,7 +642,7 @@ use_package("dplyr")
 ## `@importFrom`
 
 - If you don't want to type out `dplyr::` over and over, you can use `@importFrom` to bring a function into your package's namespace
-- The `devtools` `use_import_from` function automates this task
+- The `usethis::use_import_from` function automates this task
 
 ## `@importFrom`
 
@@ -687,7 +650,7 @@ use_package("dplyr")
 
 ```{r}
 #| eval: false
-use_import_from("dplyr", c("summarize", "group_by", "mutate", "first", "if_else", "filter", "ungroup", "arrange", "summarize"))
+usethis::use_import_from("dplyr", c("summarize", "group_by", "mutate", "first", "if_else", "filter", "ungroup", "arrange", "summarize"))
 ```
 
 - Accept the prompt to generate package documentation
@@ -697,10 +660,16 @@ use_import_from("dplyr", c("summarize", "group_by", "mutate", "first", "if_else"
 - `devtools` created a new `airlinestats-package.R` that contains `@importFrom` statements to bring these functions into the package namespace
 - The file consists of comments, but the `roxygen2` documentation system will convert these comments into import statements in the file `NAMESPACE` when the documentation is built
 
-## Confirm it worked
+## Adding R code to your package
 
-- Re-run `load_all`
-- Run the two analyses again:
+- Create three files, `busiest_routes.R`, `market_shares.R`,  and `constants.R`
+- Put the functions to calculate market shares and route popularity in `market_shares.R` and `busiest_routes.R`, respectively
+    - You can have multiple functions per file, and the names don't have to match the filename, but I try to keep distinct analyses
+        organized into different files
+- Put the symbolic constant `KILOMETERS_PER_MILE` in `constants.R`
+    - Good practice to put your constants in one file so they don't get defined in multiple places accidentally
+- _Don't_ include `library(tidyverse)`
+- Save the files in the `R` directory of your package 
 
 ```{r}
 #| eval: false
@@ -710,7 +679,7 @@ busiest_routes(data, OriginCity, DestCity)
 
 ## Checking the package
 
-- Run the `check()` function from `devtools`
+- Run the `devtools::check()` function
 
 ## Checking the package
 
@@ -738,8 +707,14 @@ check()
   market_shares: no visible binding for global variable ‘market_share’
   Undefined global functions or variables:
     Distance Passengers airport1 airport2 distance_km market_share
-
-0 errors ✔ | 1 warning ✖ | 1 note ✖
+N  checking for hidden files and directories ...
+   Found the following hidden files and directories:
+     .quarto
+   These were most likely included in error. See section ‘Package
+   structure’ in the ‘Writing R Extensions’ manual.
+N  checking for portable file names ...
+   Found the following non-portable file paths:
+     OdumDemo/docs/index_files/libs/quarto-html/quarto-syntax-highlighting-46f66b053e56abd73bb6e954d61a315b.css
 </pre>
 
 ## Addressing the issues
@@ -749,12 +724,27 @@ check()
 - `No visible binding` and `undefined global`
     - These are the columns of our data; R doesn't know this when checking the code, though, and warns that they may be undefined
     - This is fine for packages used internally; for packages you are planning to publish you often wouldn't want to assume certain columns were in the data
+- Non-portable file paths, non-standard files, and hidden directories - these are most often files that you use in development that shouldn't be part of the package anyways
+    - `air-analysis.R` uses the package but shouldn't be part of it
 
-## Installing the package
+## Ignoring unwanted files
 
-- Just run `install()` to install the package on your machine
-- Now it will be available in any R script
-- You may be prompted to update packages when you do this
+- Like `.gitignore`, there is an `.Rbuildignore` to ignore files when building an R package
+- Easiest way is again through `usethis`:
+
+```r
+usethis::use_build_ignore("docs/")
+usethis::use_build_ignore(".quarto")
+usethis::use_build_ignore("_quarto.yml")
+usethis::use_build_ignore("slides")
+usethis::use_build_ignore("data/")
+usethis::use_build_ignore("answers/")
+usethis::use_build_ignore("index.qmd")
+usethis::use_build_ignore("air_analysis.R")
+usethis::use_build_ignore("airline_analysis.R")
+```
+
+- Run `devtools::check()` again
 
 ## Bringing it full circle
 
@@ -763,59 +753,24 @@ check()
 
 ```{r}
 #| eval: false
-library(airlinestats)
+library(tidyverse)
+devtools::load_all()
+
 DATA_PATH = Sys.getenv("DATA_PATH")
-data = load_data(
-    file.path("air_sample.csv"),
-    file.path("L_CITY_MARKET_ID.csv"),
-    file.path("L_CARRIERS.csv")
-)
+
+# first, we need to load the data
+data = load_air_data(file.path(DATA_PATH, "air_sample.csv"), file.path(DATA_PATH, "L_CITY_MARKET_ID.csv"), file.path(DATA_PATH, "L_CARRIERS.csv"))
+
 busiest_routes(data, Origin, Dest)
+
+# This may be misleading, however, as some metropolitan areas have only one airport
+# (for example, Raleigh-Durham or Las Vegas), while others have more (for example,
+# New York or Los Angeles). We can repeat the analysis grouping by "market", which
+# groups these airports together.
+# Now, we can see what the most popular air route is, by summing up the number of
+# passengers carried.
 busiest_routes(data, OriginCity, DestCity)
 ```
-
-. . . 
-
-<pre>
-Error in load_data("data/air_sample.csv", "data/L_CARRIERS.csv", "data/L_CITY_MARKET_ID.csv") : 
-  could not find function "load_data"
-</pre>
-
-## Fixing the error
-
-- Only functions you explicitly _export_ from a package will be available outside the package
-- This allows you to have functions used only internally
-- We mark a function to be exported by adding a comment above the function definition
-```{r}
-#' @export
-```
-- Mark all three functions exported
-
-## Reinstalling the package
-
-- We need to run three functions to reinstall
-    - `document()` to parse the special comments we added
-    - `check()` to help ensure we didn't introduce additional errors
-    - `install()` to reinstall the package
-
-## A new warning
-
-<pre>
-❯ checking for missing documentation entries ... WARNING
-  Undocumented code objects:
-    ‘busiest_routes’ ‘load_data’ ‘market_shares’
-  All user-level objects in a package should have documentation entries.
-  See chapter ‘Writing R documentation files’ in the ‘Writing R
-  Extensions’ manual.
-</pre>
-
-- R suggests that all exported functions in a package have documentation
-- We'll ignore this for now
-
-## Finishing up
-
-- Re-run the code using your package; it should work now
-- You may have to restart R
 
 ## Automated testing
 
@@ -839,7 +794,7 @@ Error in load_data("data/air_sample.csv", "data/L_CARRIERS.csv", "data/L_CITY_MA
 
 ```{r}
 #| eval: false
-use_testthat(3)
+usethis::use_testthat(3)
 ```
 
 ## Automated testing in R
@@ -850,7 +805,7 @@ use_testthat(3)
 ## Writing tests
 
 - Create an R file to hold tests for the analysis functions
-- It's good practice to match the names of the test files to the names of the files that define the code being tested, so create `tests/testthat/test-analysis.R`
+- It's good practice to match the names of the test files to the names of the files that define the code being tested, so create `tests/testthat/test-market-shares.R`
 
 ## Writing tests
 
@@ -911,8 +866,10 @@ test_that("Error when passengers column missing", {
 - Alternately, run
 ```{r}
 #| eval: false
-test_file("tests/testthat/test-analysis.R")
+devtools::test()
 ```
+
+to test everything
 
 ## Fix test errors
 
@@ -935,7 +892,7 @@ test_file("tests/testthat/test-analysis.R")
 
 ## Including data in tests
 
-- Put data files in `inst/extdata`
+- Put data files in `inst/testdata`
 - Call it `passengers.csv`
 
 ```
@@ -948,33 +905,20 @@ JFK,SFO,2,2586
 ## Writing the test
 
 - Write a test that reads the data in and tests that `busiest_routes` returns JFK->SFO as the busiest route
-- You can get the path to your `passengers.csv` file with `system.file("extdata", "passengers.csv", package="airlinestats")`
+    - Note that I have cleverly also tested that both directions are combined, because SFO->JFK and JFK->SFO are individually smaller than RDU->CLT
+- You can get the path to your `passengers.csv` file with `system.file("testdata", "passengers.csv", package="airlinestats")`
 
-## How to use your package
+## Result
 
-- Two ways to use your package: through `install` and through devtools `load_all`
-- `install` is the "right" way to use packages
-    - load with `library()`, just like any other package
-- `load_all` has advantages, though
-    - Always in sync with your code - no installation step needed
-    - I usually do this with packages that support a single analysis - I keep my scripts in the same folder as the R code, and just use `devtools::load_all()` to load the package
-
-## Writing scripts using your package
-
-- Scripts can be in your package directory or elsewhere
-    - Just don't put them in your `R` directory
-- If you're installing your package, you can load it in your scripts with `library`
-- Otherwise, load it with `devtools::load_all()`
-
-## Where to put your scripts
-
-- Single-project package - keep them in the same directory as the package
-- Multiple-project package - have a separate directory/repository for each project using the package
-
-## Exercise
-
-- Move your analysis scripts into your package directory
-- Replace `library(airlinestats)` with `devtools::load_all()` to load the package
+```{r}
+test_that("busiest_routes works", {
+  data = readr::read_csv(system.file("testdata/passengers.csv", package="OdumModularDesignR"))
+  result = busiest_routes(data, from, to)
+  expect_equal(result$airport1, c("JFK", "CLT"))
+  expect_equal(result$airport2, c("SFO", "RDU"))
+  expect_equal(result$Passengers, c(4, 3))
+})
+```
 
 ## Environment management and `renv`
 
@@ -993,6 +937,8 @@ JFK,SFO,2,2586
 
 - Install `renv` if needed
 - Run `renv::init()`
+- We will run `renv` in "implicit mode" - this way it will track packages used in our scripts
+- "Explicit" mode only tracks the packages you've added with `use_package` or `use_import_from`
 - Inspect `renv.lock`
 
 ## `renv.lock`
@@ -1030,6 +976,8 @@ JFK,SFO,2,2586
 - If your package is used by multiple projects, you want to use `renv` with each individual project
     - Those projects might require additional dependencies
     - Packages intended for reuse will need to coexist with other packages - if two packages used renv and requested different versions of (say) dplyr, that would be an issue
+- This is why explicit mode is useless IMHO - the only reason to do it would be if your package was intended to be distributed to others, and
+    in that case `renv` should be set up in their projects, not in the package
 
 ## `renv` and a project-based workflow
 
@@ -1038,14 +986,7 @@ JFK,SFO,2,2586
     - This is a good thing
 - Using a [project-based workflow](https://www.tidyverse.org/blog/2017/12/workflow-vs-script/) lets you make your code portable between machines
 - Key points: avoid `setwd`, `rm(list=ls())`, and saving `.RData`
-
-## `renv` and a project-based workflow
-
-- Avoid absolute file paths (`/Users/...`, `C:\...`, `~/...`)
-- These will only work on your machine
-- Use a project-relative path (`data/file.csv`)
-- If your data is not in the same directory as your code, have a constant that specifies where to find the data, so you only have to edit it once
-- Then use `file.path(DATA_DIR, "file.csv")` etc.
+    - You can even configure RStudio to never save `.RData`, which I recommend
 
 ## `renv` and version control
 
@@ -1053,66 +994,14 @@ JFK,SFO,2,2586
     - not `renv/library` if you have it, this contains the actual packages
     - should be ignored automatically by Git
 
-## Sharing your project with others (or yourself)
+## Getting our package on Github
 
-- Easiest way to share your project with your team is through Github
-- You should be using version control with your project anyhow
-
-## Exercise
-
-- Commit your project to git and post it to github
-- Add `.Rhistory` to `.gitignore` so we don't accidentally commit it
-    - It could contain passwords, etc, entered at the R command prompt
-- Make the repository public for now
-
-
-## Installing your package elsewhere
-
-- Go back to your original `odum-modular-r` R project
-- Set up `renv`
-- Install your package from GitHub
-    - `renv::install("username/repository")`
-    - You may need to remove any `library(airlinestats)` lines of code, and remove the `airlinestats` package if you installed it earlier
-- Rewrite your code to use the `airlinestats` package
-- Run `renv::snapshot` to save the `airlinestats` dependency
-
-## Changes to `renv.lock`
-
-```
-    "airlinestats2": {
-      "Package": "airlinestats2",
-      "Version": "0.0.0.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "mattwigway",
-      "RemoteRepo": "airlinestats2-dev",
-      "RemoteRef": "main",
-      "RemoteSha": "2ccb511cf76bbcbd7848caa435d3fa83fb208b3c",
-      "Requirements": [
-        "dplyr",
-        "magrittr",
-        "readr"
-      ],
-      "Hash": "a6337efc770d7b608152db75cda76944"
-    }
-```
-
-## Benefits of installing this way vs. using `install()`
-
-- `renv` saved the commit ID in your lockfile
-- When you run `renv::restore`, you will get that exact commit
-- Your own packages probably change more frequently and dramatically than any other packages you use
-- It makes sense to track the versions of your packages even more than tracking the version of other packages
-- If you use `install()`, code might work on one machine but not another because of different installed library versions
-- This method does not require explicitly downloading the package source on each machine
-
-## Collaborating with others
-
-- Anyone can run `renv::install("user/package")` and get your package, if your Github repository is public
-- If you're tagging releases, `renv::install("user/package@tag")` will get that version
-- `renv::update("packagename")` to update
-    - not `user/package`, but the package name you'd put in `library()`
+- Since we originally cloned the repository from Github, if we try to push it it will just try to push to the original repository
+- To "disconnect" the repository from the original Github repository:
+    - `git remote rm origin`
+- Then, create a new Github repo
+- Commit the changes you've made
+- And push the code to it
 
 ## Continuous integration
 
@@ -1124,7 +1013,7 @@ JFK,SFO,2,2586
 ## Continuous integration
 
 - This is particularly valuable if you're using branches for development (you should)
-- When you create a pull request, [Github will display whether the tests pass before you merge](https://github.com/mattwigway/TransitRouter.jl/pull/25)
+- When you create a pull request, [Github will display whether the tests pass before you merge](https://github.com/mattwigway/gtfsrealtime-r/pull/14)
 
 ## Setting up continuous integration
 
@@ -1145,37 +1034,14 @@ JFK,SFO,2,2586
 
 - Browse to your repository on Github. Look for the brown dot to indicate workflows are running to the right of the commit message.
 
-## Fixing the errors
-
-```
-  Found the following hidden files and directories:
-Error: Error: R CMD check found WARNINGs
-    .github
-  These were most likely included in error.
-```
-
-- R is warning us that the `.github` directory was included in our package when it didn't need to be
-- We can add `.github` to `.Rbuildignore` to let R know that this folder isn't part of the package
-- Commit and push again
-
 ## Two more warnings
 
-- We still get warnings about the license specification and documentation
-- We want to ignore those for now
-- In your `check-release.yaml` file, add this below the line that says to use `check-r-package`
-
-```
-with:
-    error-on: '"error"'
-```
-
-## Two more warnings
-
-- This will suppress warnings
-- The quoting is important - using double quotes inside single quotes
-- Not a good practice in general, and we'll return to it later
-- But will allow our package to build for now
-- Commit and push the updated file
+- We still get a few warnings
+- We want to ignore those for now, though this is not good practice in general
+    - Better to fix them
+- In your `check-release.yaml` file, add this below the line that says to use `check-r-package`:
+    - ` error-on: '"error"'
+- The quote order is important: double inside single
 
 ## Using `renv` with CI
 
@@ -1188,19 +1054,6 @@ with:
 
 - CI is especially useful working with a team
 - CI will run on each pull request, and show if tests pass
-
-## Break a test
-
-- Let's make sure our CI is working
-- One of our tests confirms that market shares sum to 1
-- Let's change our code to report market shares as percentages, but not change the test
-- Do this on a branch, and push that branch to Github
-- Create a pull request from that branch
-
-## Fix the test
-
-- Change the test to use percentages, and push to your branch
-- Note that the pull request now shows that all tests pass
 
 ## Documentation
 
@@ -1312,6 +1165,17 @@ with:
 #' @export
 ```
 
+- This indicates which functions will be loaded when you run `library(package)`
+- It is optional when using devtools, but good practice to clarify which functions are intended for use outside the package
+- It is required if you are distributing your package to be used in other projects
+
+## Examples and `Suggests`
+
+- In our example above, we used the `tibble` package
+- This package is not necessary to use our package, but it is necessary to run the examples
+- R has a special way to depend on these - the `Suggests` field in the `DESCRIPTION` file
+- Let's add the tibble package to that field
+
 ## Other Roxygen2 directives
 
 - `@noRd` - do not show this in the user facing documentation (useful for documenting internal functions)
@@ -1326,12 +1190,52 @@ with:
 
 ## Exercise
 
-- Document `busiest_routes` and `load_data`
+- Document `busiest_routes` and `load_air_data`
 - Build the documentation and reload the module
 
 ## The `man` folder and git
 
 - It's typical to commit the `man` folder to git, which means you need to run `document()` before committing changes to your repository
+
+## Sharing your package with the world
+
+- The easiest way to distribute your package is to just have it on Github
+- Others can install it with `renv::install` or `devtools::install_github`
+    - Then it can be loaded with `library(package_name)`
+    - Remember to mark functions with `@export`
+- For packages that you expect to be of broad interest, CRAN is a good option
+    - The repository that `install.packages` installs packages from
+    - Notoriously unpleasant and nitpicky
+    - Read [the book](https://r-pkgs.org/release.html) before you do this
+- For packages with compiled C/C++/Rust code, [R-universe](https://r-universe.dev/search) is a good option
+    - If you don't know what this means, you don't have compiled C/C++/Rust code
+
+## Semantic versioning
+
+- Modern open-source software across many languages is switching to a common versioning scheme known as [_semantic versioning_](https://semver.org/)
+- Version numbers are three numbers separated by periods: the major version, the minor version, and the patch version
+- The patch version is incremented when you release a new version that only contains bugfixes
+- The minor version is incremented when you release a new version with new functionality that is backwards-compatible (i.e. someone using version 1.2 can update to version 1.3 without needing to change their code)
+- The major version is incremented when you release a new version with "breaking changes" - i.e. upgrading from 1.0 to 2.0 might mean other projects need to update their code
+- For version 0.x.y, anything goes - but typically folks will increment the minor version for breaking changes and the patch for anything else
+
+## Release versions
+
+- When you release a version, it's a good idea to:
+    - Update the version number in `DESCRIPTION`
+    - Create a tag on Github (typically the tag would start with a `v`, e.g. `v1.0.0`)
+    - Create a release on Github from that tag
+    - Have a changelog describing the change (typically in NEWS.md).
+    - When under development, it is typical for the version to be set to whatever the previous version was, with `.9000` added to the end
+- Then people can install a specific version with `devtools::install_github("user/package@v1.0.0")` or `renv::install("user/package@v1.0.0")`
+
+## Building a website for your package
+
+- The best way to distribute documentation is through a [pkgdown](https://pkgdown.r-lib.org/) site
+    - For example, [this](https://projects.indicatrix.org/gtfsrealtime-r/) is the pkgdown site for one of the packages I maintain
+- The easiest way to set this up is `usethis::use_pkgdown_github_pages()`
+- This will make your pkgdown site available at `https://<username>.github.io/<package>`
+    - **This will be public even if your repository is private**
 
 ## Vignettes
 
@@ -1395,11 +1299,22 @@ market_shares(data, Origin, OperatingCarrierName)
 
 ## Previewing your vignette
 
-- Run `devtools::build_rmd("vignettes/your-vignette.Rmd")`
+- I find the easiest way is to just swap out `library()` for `devtools::load_all()` and then use the RStudio render button
 
 ## Using your vignette
 
 - Once your package is installed, you can also see the vignette with `vignette("vignette_name", package="package_name")` or `browseVignettes("packagename")`
+- Vignettes will also show up on your `pkgdown` site
+
+## Fix the error
+
+- Add `- uses: r-lib/actions/setup-pandoc@v2` to your workflow to allow it to build your RMarkdown vignettes
+
+## Vignettes and installing from Github
+
+- Vignettes are not built when installing from github, to save time
+    - Most packages will have their vignettes available on a `pkgdown` site anyhow
+- Vignettes are mostly for packages you expect many others to use
 
 ## Fixing the license
 
@@ -1411,69 +1326,8 @@ market_shares(data, Origin, OperatingCarrierName)
 ## Fixing the license
 
 - We'll use a proprietary license for now
-    - Or if you prefer an open source one
+    - Or if you prefer an open source one you can do that, e.g. `usethis::use_mit_license()`
 - `usethis::use_proprietary_license("your name")`
-
-## Re-enabling warnings
-
-- Remove the lines you added above about erroring on warnings in your workflow
-
-## Test it out
-
-- Commit and push everything to github
-- CI should pass
-
-## Bringing it full circle
-
-- Return to your original R project (where we used `renv::install`)
-- Run `renv::update("packagename")`
-- Run `library(airlinestats)`
-- Run `?market_shares`
-
-## Fix the error
-
-- Add `- uses: r-lib/actions/setup-pandoc@v2` to your workflow to allow it to build your RMarkdown vignettes
-
-## Vignettes and installing from Github
-
-- Vignettes are not built when installing from github, to save time
-- Vignettes are mostly for packages you expect many others to use
-
-## Building a website for your package
-
-- The best way to distribute vignettes (and documentation) is through a [pkgdown](https://pkgdown.r-lib.org/) site
-    - For example, [this](https://projects.indicatrix.org/gtfsrealtime-r/) is the pkgdown site for one of the packages I maintain
-- The easiest way to set this up is `usethis::use_pkgdown_github_pages()`
-- This will make your pkgdown site available at `https://<username>.github.io/<package>`
-    - **This will be public even if your repository is private**
-
-## Sharing your package with the world
-
-- The easiest way to distribute your package is to just have it on Github
-- Others can install it with `renv::install` or `devtools::install_github`
-- For packages that you expect to be of broad interest, CRAN is a good option
-    - The repository that `install.packages` installs packages from
-    - Notoriously unpleasant and nitpicky
-    - Read [the book](https://r-pkgs.org/release.html) before you do this
-- For packages with compiled C/C++/Rust code, [R-universe](https://r-universe.dev/search) is a good option
-    - If you don't know what this means, you don't have compiled C/C++/Rust code
-
-## Semantic versioning
-
-- Modern open-source software across many languages is switching to a common versioning scheme known as [_semantic versioning_](https://semver.org/)
-- Version numbers are three numbers separated by periods: the major version, the minor version, and the patch version
-- The patch version is incremented when you release a new version that only contains bugfixes
-- The minor version is incremented when you release a new version with new functionality that is backwards-compatible (i.e. someone using version 1.2 can update to version 1.3 without needing to change their code)
-- The major version is incremented when you release a new version with "breaking changes" - i.e. upgrading from 1.0 to 2.0 might mean other projects need to update their code
-- For version 0.x.y, anything goes - but typically folks will increment the minor version for breaking changes and the patch for anything else
-
-## Release versions
-
-- When you release a version, it's a good idea to:
-    - Create a tag on Github (typically the tag would start with a `v`, e.g. `v1.0.0`)
-    - Create a release on Github from that tag
-    - Have a changelog describing the change (typically in NEWS.md).
-- Then people can install a specific version with `devtools::install_github("user/package@v1.0.0")` or `renv::install("user/package@v1.0.0")`
 
 ## Additional resources
 
