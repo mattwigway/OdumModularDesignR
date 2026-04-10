@@ -911,6 +911,7 @@ JFK,SFO,2,2586
 ## Result
 
 ```{r}
+#| eval: false
 test_that("busiest_routes works", {
   data = readr::read_csv(system.file("testdata/passengers.csv", package="OdumModularDesignR"))
   result = busiest_routes(data, from, to)
