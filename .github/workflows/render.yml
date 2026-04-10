@@ -40,6 +40,8 @@ jobs:
           packages: tidyverse
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Render Quarto
+        uses: quarto-dev/quarto-actions/render@v2
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
